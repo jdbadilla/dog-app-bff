@@ -28,8 +28,12 @@ app.get("/breeds/list/all", async (req, res) => {
 });
 
 app.get("/breeds/detail/:id", async (req, res) => {
+  const numberOfImages = Number(req.query.numberOfImages); // the number of images that should be retrieved for the breed details page
   const breedId = req.params.id;
-  const breedDetails = await dogBreedService.getBreedDetails(breedId);
+  const breedDetails = await dogBreedService.getBreedDetails({
+    breedId,
+    numberOfImages,
+  });
   res.send(JSON.stringify(breedDetails));
 });
 

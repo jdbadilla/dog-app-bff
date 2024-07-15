@@ -5,7 +5,7 @@ export interface DogBreed {
 }
 
 export interface DogBreedDetails extends DogBreed {
-  imageUrl: string;
+  imageUrls: string[];
   relatedSubBreeds: RelatedSubBreed[];
 }
 

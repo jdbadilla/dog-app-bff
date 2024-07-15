@@ -48,19 +48,26 @@ export class DogBreedService {
     };
   };
 
-  public getBreedDetails = async (
-    breedId: string
-  ): Promise<DogBreedDetails> => {
+  public getBreedDetails = async ({
+    breedId,
+    numberOfImages = 1,
+  }: {
+    breedId: string;
+    numberOfImages?: number;
+  }): Promise<DogBreedDetails> => {
     const foundBreed = this.allBreeds.find((breed) => breed.id === breedId);
     if (!foundBreed) {
       throw new Error(`No breed found for the requested breed id: ${breedId}`);
     }
 
-    const imageUrl = await this.getImageUrlByBreed(foundBreed);
+    const imageUrls = await this.getImageUrlsByBreed({
+      breed: foundBreed,
+      numberOfImages,
+    });
     const relatedSubBreeds = await this.getRelatedSubBreedsByBreed(foundBreed);
 
     return {
-      imageUrl,
+      imageUrls,
       id: breedId,
       name: foundBreed.name,
       subBreedName: foundBreed.subBreedName,
@@ -81,18 +88,24 @@ export class DogBreedService {
   };
 
   /** Retrieves an image with the exact breed (taking sub-breed into account) */
-  private getImageUrlByBreed = async (breed: DogBreed) => {
+  private getImageUrlsByBreed = async ({
+    breed,
+    numberOfImages = 1,
+  }: {
+    breed: DogBreed;
+    numberOfImages?: number;
+  }): Promise<string[]> => {
     const imageRequestUrl = `/breed/${breed.name}/${
       breed.subBreedName ? `${breed.subBreedName}/` : ""
-    }images/random`;
+    }images/random/${numberOfImages}`;
     const imageRequest = await this.dogBreedService.get(imageRequestUrl);
     if (imageRequest.status !== 200) {
       throw new Error(
         `There was a problem fetching the image of breed with given id. Status code: ${imageRequest.status}`
       );
     }
-    const imageUrl = JSON.parse(imageRequest.data).message;
-    return imageUrl;
+    const imageUrls = JSON.parse(imageRequest.data).message;
+    return imageUrls;
   };
 
   private getRelatedSubBreedsByBreed = async (breed: DogBreed) => {
