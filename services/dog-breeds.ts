@@ -39,6 +39,7 @@ export class DogBreedService {
       unflattenedBreedsArray
     );
 
+    // store flattened dog breeds in the cache
     this.allBreeds = flattenedBreedsArray;
 
     return {
@@ -79,6 +80,7 @@ export class DogBreedService {
     return this.allBreeds.slice(start, end);
   };
 
+  /** Retrieves an image with the exact breed (taking sub-breed into account) */
   private getImageUrlByBreed = async (breed: DogBreed) => {
     const imageRequestUrl = `/breed/${breed.name}/${
       breed.subBreedName ? `${breed.subBreedName}/` : ""
@@ -101,12 +103,14 @@ export class DogBreedService {
         `There was a problem fetching the sub breeds of breed with given id. Status code: ${subBreedRequest.status}`
       );
     }
-    const relatedSubBreeds = JSON.parse(subBreedRequest.data)
-      .message.filter((subBreed: string) => subBreed !== breed.subBreedName)
+    const relatedSubBreedsData = JSON.parse(subBreedRequest.data).message;
+    const relatedSubBreeds = relatedSubBreedsData
+      .filter((subBreed: string) => subBreed !== breed.subBreedName)
       .map((subBreed: string) => {
         const foundSubBreed = this.allBreeds.find(
-          (breed) =>
-            breed.subBreedName === subBreed && breed.name === breed.name
+          (breedFromCache) =>
+            breedFromCache.subBreedName === subBreed &&
+            breedFromCache.name === breed.name
         );
 
         if (!foundSubBreed) {
