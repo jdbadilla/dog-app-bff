@@ -1,32 +1,26 @@
 import { Axios } from "axios";
-import { DogBreed, DogBreedDetails } from "./types/dog-breed";
-import crypto from "crypto";
+import { DogBreed, DogBreedDetails, RelatedSubBreed } from "./types/dog-breed";
+import { flattenListOfDogBreeds } from "./helpers/flattenListOfDogBreeds";
+import { calculateNumberOfPages } from "./helpers/calculateNumberOfPages";
+import { extractIdsForSubBreedsByBreed } from "./helpers/extractRelatedSubBreeds";
+import { getEntriesByPageNumberAndPageSize } from "./helpers/getEntriesByPageNumberAndPageSize";
 
 export class DogBreedService {
-  private dogBreedService = new Axios({
-    baseURL: "https://dog.ceo/api",
-  });
+  private dogBreedService = new Axios({ baseURL: "https://dog.ceo/api" });
   private allBreeds: DogBreed[] = [];
-
   constructor() {}
 
-  public getAllBreeds = async ({
-    limit,
+  /**
+   * Fetch paginated breed data from Dog API, flatten the list, and cache it
+   * */
+  public getBreeds = async ({
+    pageSize,
     pageNumber,
   }: {
-    limit: number;
+    pageSize: number;
     pageNumber: number;
   }): Promise<{ numberOfPages: number; dogBreeds: DogBreed[] }> => {
-    // return breeds if they have already been cached
-    if (this.allBreeds.length !== 0) {
-      return {
-        numberOfPages: this.getNumberOfPagesByLimit(limit),
-        dogBreeds: this.getBreedsByPageNumberAndLimit({ limit, pageNumber }),
-      };
-    }
-
     const request = await this.dogBreedService.get("/breeds/list/all");
-
     if (request.status !== 200) {
       throw new Error(
         `There was a problem fetching the list of all breeds. Status code: ${request.statusText}`
@@ -34,20 +28,15 @@ export class DogBreedService {
     }
 
     const unflattenedBreedsArray = JSON.parse(request.data).message;
+    const flattenedBreedsArray = flattenListOfDogBreeds(unflattenedBreedsArray);
+    this.storeBreedsInCache(flattenedBreedsArray);
 
-    const flattenedBreedsArray = this.flattenListOfDogBreeds(
-      unflattenedBreedsArray
-    );
-
-    // store flattened dog breeds in the cache
-    this.allBreeds = flattenedBreedsArray;
-
-    return {
-      numberOfPages: this.getNumberOfPagesByLimit(limit),
-      dogBreeds: this.getBreedsByPageNumberAndLimit({ limit, pageNumber }),
-    };
+    return this.getBreedsFromCacheByPage({ pageSize, pageNumber });
   };
 
+  /**
+   * Retrieve breed details from the cache based on the provided ID
+   * */
   public getBreedDetails = async ({
     breedId,
     numberOfImages = 1,
@@ -57,7 +46,9 @@ export class DogBreedService {
   }): Promise<DogBreedDetails> => {
     const foundBreed = this.allBreeds.find((breed) => breed.id === breedId);
     if (!foundBreed) {
-      throw new Error(`No breed found for the requested breed id: ${breedId}`);
+      throw new Error(
+        `No breed found in the cache for the requested breed id: ${breedId}`
+      );
     }
 
     const imageUrls = await this.getImageUrlsByBreed({
@@ -75,19 +66,9 @@ export class DogBreedService {
     };
   };
 
-  private getBreedsByPageNumberAndLimit = ({
-    limit,
-    pageNumber,
-  }: {
-    limit: number;
-    pageNumber: number;
-  }) => {
-    const start = 0 + (pageNumber - 1) * limit;
-    const end = limit * pageNumber;
-    return this.allBreeds.slice(start, end);
-  };
-
-  /** Retrieves an image with the exact breed (taking sub-breed into account) */
+  /**
+   * Retrieves an image for a specific breed (taking sub-breed into account)
+   * */
   private getImageUrlsByBreed = async ({
     breed,
     numberOfImages = 1,
@@ -108,7 +89,12 @@ export class DogBreedService {
     return imageUrls;
   };
 
-  private getRelatedSubBreedsByBreed = async (breed: DogBreed) => {
+  /**
+   * Retrieves related sub-breeds for a specific breed
+   * */
+  private getRelatedSubBreedsByBreed = async (
+    breed: DogBreed
+  ): Promise<RelatedSubBreed[]> => {
     const subBreedRequestUrl = `/breed/${breed.name}/list`;
     const subBreedRequest = await this.dogBreedService.get(subBreedRequestUrl);
     if (subBreedRequest.status !== 200) {
@@ -116,62 +102,38 @@ export class DogBreedService {
         `There was a problem fetching the sub breeds of breed with given id. Status code: ${subBreedRequest.status}`
       );
     }
-    const relatedSubBreedsData = JSON.parse(subBreedRequest.data).message;
-    const relatedSubBreeds = relatedSubBreedsData
-      .filter((subBreed: string) => subBreed !== breed.subBreedName)
-      .map((subBreed: string) => {
-        const foundSubBreed = this.allBreeds.find(
-          (breedFromCache) =>
-            breedFromCache.subBreedName === subBreed &&
-            breedFromCache.name === breed.name
-        );
+    const relatedSubBreedsNames = JSON.parse(subBreedRequest.data).message;
+    const relatedSubBreedsWithId = extractIdsForSubBreedsByBreed({
+      breeds: this.allBreeds,
+      subBreedNames: relatedSubBreedsNames,
+      breed,
+    });
 
-        if (!foundSubBreed) {
-          throw new Error(
-            `No sub breed found for the requested breed id: ${breed.id}`
-          );
-        }
-
-        return {
-          id: foundSubBreed?.id,
-          subBreedName: subBreed,
-        };
-      });
-    return relatedSubBreeds;
-  };
-
-  private flattenListOfDogBreeds = (
-    unflattenedBreedsArray: Record<string, string[]>
-  ) => {
-    const flattenedBreedsArray = Object.keys(unflattenedBreedsArray).reduce(
-      (allBreeds: DogBreed[], currentBreed: string) => {
-        const hasSubBreeds = unflattenedBreedsArray[currentBreed].length > 0;
-        if (!hasSubBreeds) {
-          const dogBreed = { name: currentBreed, id: crypto.randomUUID() };
-          return [...allBreeds, dogBreed];
-        } else {
-          const subBreeds = unflattenedBreedsArray[currentBreed].map(
-            (subBreed: string) => {
-              return {
-                name: currentBreed,
-                subBreedName: subBreed,
-                id: crypto.randomUUID(),
-              };
-            }
-          );
-          return [...allBreeds, ...subBreeds];
-        }
-      },
-      []
-    );
-
-    return flattenedBreedsArray;
+    return relatedSubBreedsWithId;
   };
 
   /**
-   * Retrieves the number of pages given a particular limit for # of results shown
+   * Retrieves the paginated entries and calculates the number of pages
    */
-  private getNumberOfPagesByLimit = (limit: number) => {
-    return Math.ceil(this.allBreeds.length / limit);
+  private getBreedsFromCacheByPage = ({
+    pageSize,
+    pageNumber,
+  }: {
+    pageSize: number;
+    pageNumber: number;
+  }) => ({
+    numberOfPages: calculateNumberOfPages({
+      totalNumberOfEntries: this.allBreeds.length,
+      pageSize,
+    }),
+    dogBreeds: getEntriesByPageNumberAndPageSize({
+      pageSize,
+      pageNumber,
+      entries: this.allBreeds,
+    }),
+  });
+
+  private storeBreedsInCache = (flattenedBreedsArray: DogBreed[]) => {
+    this.allBreeds = flattenedBreedsArray;
   };
 }

@@ -10,9 +10,9 @@ app.use(cors());
 const dogBreedService = new DogBreedService();
 
 app.get("/breeds/list/all", async (req, res) => {
-  const limit = Number(req.query.size); // the number of results that should be shown
+  const pageSize = Number(req.query.size); // the number of results that should be shown
   const pageNumber = Number(req.query.page); // the page number for the number of results that should be shown
-  if (!limit || isNaN(limit)) {
+  if (!pageSize || isNaN(pageSize)) {
     throw new Error(
       'No "size" query param was provided in the request; please provide this value to retrieve the breeds.'
     );
@@ -22,7 +22,10 @@ app.get("/breeds/list/all", async (req, res) => {
       'No "page" query param was provided in the request; please provide this value to retrieve the breeds.'
     );
   }
-  const allBreeds = await dogBreedService.getAllBreeds({ limit, pageNumber });
+  const allBreeds = await dogBreedService.getBreeds({
+    pageSize,
+    pageNumber,
+  });
   res.statusCode = 200;
   res.send(JSON.stringify(allBreeds));
 });

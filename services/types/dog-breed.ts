@@ -9,7 +9,7 @@ export interface DogBreedDetails extends DogBreed {
   relatedSubBreeds: RelatedSubBreed[];
 }
 
-interface RelatedSubBreed {
+export interface RelatedSubBreed {
   id: string;
   subBreedName: string;
 }
