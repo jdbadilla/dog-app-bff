@@ -150,6 +150,9 @@ export class DogBreedService {
     }),
   });
 
+  /**
+   * Stores the flattened list of breeds in the cache
+   */
   private storeBreedsInCache = (flattenedBreedsArray: DogBreed[]) => {
     this.allBreeds = flattenedBreedsArray;
   };
