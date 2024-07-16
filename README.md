@@ -15,7 +15,7 @@ Important: Given that the Dog API returns no unique identifiers, we are generati
 
 ## Running unit tests
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Run `yarn test` to execute the unit tests via [Jest](https://jestjs.io/).
 
 ## Further help
 
