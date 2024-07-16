@@ -1,6 +1,6 @@
 import { DogBreed } from "../types/dog-breed";
 
-export const extractIdsForSubBreedsByBreed = ({
+export const extractRelatedSubBreeds = ({
   breeds,
   subBreedNames,
   breed,

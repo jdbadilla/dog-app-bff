@@ -2,7 +2,7 @@ import { Axios } from "axios";
 import { DogBreed, DogBreedDetails, RelatedSubBreed } from "./types/dog-breed";
 import { flattenListOfDogBreeds } from "./helpers/flattenListOfDogBreeds";
 import { calculateNumberOfPages } from "./helpers/calculateNumberOfPages";
-import { extractIdsForSubBreedsByBreed } from "./helpers/extractRelatedSubBreeds";
+import { extractRelatedSubBreeds } from "./helpers/extractRelatedSubBreeds";
 import { getEntriesByPageNumberAndPageSize } from "./helpers/getEntriesByPageNumberAndPageSize";
 
 export class DogBreedService {
@@ -103,13 +103,30 @@ export class DogBreedService {
       );
     }
     const relatedSubBreedsNames = JSON.parse(subBreedRequest.data).message;
-    const relatedSubBreedsWithId = extractIdsForSubBreedsByBreed({
+    const relatedSubBreedsWithId = extractRelatedSubBreeds({
       breeds: this.allBreeds,
       subBreedNames: relatedSubBreedsNames,
       breed,
     });
 
-    return relatedSubBreedsWithId;
+    const relatedSubBreedsWithSampleImage = await Promise.all(
+      relatedSubBreedsWithId.map(async (relatedSubBreed) => {
+        const imageUrls = await this.getImageUrlsByBreed({
+          breed: {
+            name: breed.name,
+            subBreedName: relatedSubBreed.subBreedName,
+            id: relatedSubBreed.id,
+          },
+          numberOfImages: 1,
+        });
+        return {
+          ...relatedSubBreed,
+          imageUrl: imageUrls[0],
+        };
+      })
+    );
+
+    return relatedSubBreedsWithSampleImage;
   };
 
   /**

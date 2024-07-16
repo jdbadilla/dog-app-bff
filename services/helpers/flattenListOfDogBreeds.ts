@@ -1,5 +1,4 @@
 import { DogBreed } from "../types/dog-breed";
-import crypto from "crypto";
 
 export const flattenListOfDogBreeds = (
   unflattenedBreedsArray: Record<string, string[]>
@@ -8,7 +7,10 @@ export const flattenListOfDogBreeds = (
     (allBreeds: DogBreed[], currentBreed: string) => {
       const hasSubBreeds = unflattenedBreedsArray[currentBreed].length > 0;
       if (!hasSubBreeds) {
-        const dogBreed = { name: currentBreed, id: crypto.randomUUID() };
+        const dogBreed = {
+          name: currentBreed,
+          id: getIdFromBreedAndSubBreed(currentBreed),
+        };
         return [...allBreeds, dogBreed];
       } else {
         const subBreeds = unflattenedBreedsArray[currentBreed].map(
@@ -16,7 +18,7 @@ export const flattenListOfDogBreeds = (
             return {
               name: currentBreed,
               subBreedName: subBreed,
-              id: crypto.randomUUID(),
+              id: getIdFromBreedAndSubBreed(currentBreed, subBreed),
             };
           }
         );
@@ -27,4 +29,8 @@ export const flattenListOfDogBreeds = (
   );
 
   return flattenedBreedsArray;
+};
+
+const getIdFromBreedAndSubBreed = (currentBreed: string, subBreed?: string) => {
+  return `${currentBreed}${subBreed ? `-${subBreed}` : ""}`;
 };
