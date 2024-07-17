@@ -2,6 +2,10 @@
 
 This backend service was generated with [Node.js](https://nodejs.org/en) and is served by [Express](https://expressjs.com/).
 
+## Before running
+
+This application works in conjunction with the [Dog App Node BFF](https://github.com/jdbadilla/dog-app-bff). Please make sure you are running that before initializing the development server.
+
 ## Development server
 
 Run `npx tsx index.ts` to run the backend service locally. It is served on port 3000 (`http://localhost:3000/`). If you change something, the application must be manually reloaded in order for the changes to be reflected.
